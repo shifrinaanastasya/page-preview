@@ -1,0 +1,13 @@
+{
+  "name": "@shifrina_a/page-preview",
+  "version": "1.0.0",
+  "description": "Browser web component for previewing HTML pages",
+  "type": "module",
+  "exports": "./src/page-preview.js",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT"
+}
