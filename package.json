@@ -1,6 +1,6 @@
 {
   "name": "@shifrina_a/page-preview",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Browser web component for previewing HTML pages",
   "type": "module",
   "exports": "./src/page-preview.js",
