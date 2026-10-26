@@ -1,25 +1,26 @@
+
 const successBackground = new URL('./assets/success.png', import.meta.url).href;
 const errorBackground = new URL('./assets/error.png', import.meta.url).href;
+
 const template = document.createElement('template');
 
 template.innerHTML = `
-  <style>
-    :host {
-      display: block;
-      max-width: 520px;
-      margin: 20px 0;
-      font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-      color: #ffffff;
-    }
+<style>
+:host {
+  display: block;
+  max-width: 520px;
+  margin: 20px 0;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  color: #ffffff;
+}
 
-    .card {
+.card {
   position: relative;
   min-height: 250px;
   padding: 22px;
   border: 2px solid rgb(255 255 255 / 60%);
   border-radius: 16px;
   background-color: #26334a;
-  background-image: var(--preview-background);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -29,8 +30,7 @@ template.innerHTML = `
   box-sizing: border-box;
 }
 
-
-    .label {
+.label {
   margin: 18px 0 5px;
   color: #ffffff;
   font-size: 13px;
@@ -39,7 +39,7 @@ template.innerHTML = `
   text-shadow: 1px 2px 4px rgb(0 0 0 / 80%);
 }
 
-    .value {
+.value {
   margin: 0;
   color: #ffffff;
   font-size: 16px;
@@ -48,7 +48,7 @@ template.innerHTML = `
   text-shadow: 1px 2px 4px rgb(0 0 0 / 90%);
 }
 
-    a {
+a {
   display: inline-block;
   max-width: 100%;
   color: #ffffff;
@@ -59,45 +59,33 @@ template.innerHTML = `
   text-shadow: 2px 2px 5px rgb(0 0 0 / 90%);
 }
 
-    a:hover {
-      text-decoration: underline;
-    }
+a:hover {
+  text-decoration: underline;
+}
 
-    .status {
+.status {
   margin-top: 20px;
   color: #ffffff;
   font-size: 14px;
   text-shadow: 1px 2px 4px rgb(0 0 0 / 90%);
 }
 
-    :host([data-status="error"]) .status {
-      color: #ffd5d5;
-    }
-:host([data-status="ready"]) .card {
-  --preview-background: url("SUCCESS_BACKGROUND");
+:host([data-status="error"]) .status {
+  color: #ffd5d5;
 }
+</style>
 
-:host([data-status="error"]) .card {
-  --preview-background: url("ERROR_BACKGROUND");
-}
+<article class="card">
+<a part="link" target="_blank" rel="noopener noreferrer"></a>
 
-:host([data-status="loading"]) .card {
-  --preview-background: none;
-  background-color: #64748b;
-}
-  </style>
+<div class="label">Название документа</div>
+<p class="value"><span part="title"></span></p>
 
-  <article class="card">
-    <a part="link" target="_blank" rel="noopener noreferrer"></a>
+<div class="label">Первый заголовок H1</div>
+<p class="value"><span part="heading"></span></p>
 
-    <div class="label">Название документа</div>
-    <p class="value"><span part="title"></span></p>
-
-    <div class="label">Первый заголовок H1</div>
-    <p class="value"><span part="heading"></span></p>
-
-    <p class="status" part="status" role="status" aria-live="polite"></p>
-  </article>
+<p class="status" part="status" role="status" aria-live="polite"></p>
+</article>
 `;
 
 class PagePreview extends HTMLElement {
@@ -125,38 +113,40 @@ class PagePreview extends HTMLElement {
   }
 
   disconnectedCallback() {
-    // Инвалидируем все запросы этого экземпляра и отменяем текущий.
+    // Делает все незавершённые запросы устаревшими.
     this.requestId += 1;
+
     this.abortController?.abort();
     this.abortController = null;
+
+    // При повторном подключении страницу нужно загрузить снова.
     this.lastRequestedSrc = undefined;
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (name !== 'src' || oldValue === newValue) {
-      return;
-    }
-
-    // При первоначальном разборе HTML загрузка начнётся в connectedCallback.
-    if (this.isConnected) {
+    if (
+      name === 'src' &&
+      oldValue !== newValue &&
+      this.isConnected
+    ) {
       this.loadPage();
     }
   }
 
   setStatus(status, message) {
-  this.dataset.status = status;
-  this.statusElement.textContent = message;
+    this.dataset.status = status;
+    this.statusElement.textContent = message;
 
-  if (status === 'ready') {
-    this.cardElement.style.backgroundImage =
+    if (status === 'ready') {
+      this.cardElement.style.backgroundImage =
       `url("${successBackground}")`;
-  } else if (status === 'error') {
-    this.cardElement.style.backgroundImage =
+    } else if (status === 'error') {
+      this.cardElement.style.backgroundImage =
       `url("${errorBackground}")`;
-  } else {
-    this.cardElement.style.backgroundImage = 'none';
+    } else {
+      this.cardElement.style.backgroundImage = 'none';
+    }
   }
-}
 
   resetContent() {
     this.titleElement.textContent = 'Название отсутствует';
@@ -166,41 +156,50 @@ class PagePreview extends HTMLElement {
   async loadPage() {
     const src = this.getAttribute('src');
 
-    // Не запускаем повторный запрос для того же src.
-    if (this.lastRequestedSrc === src) {
-      return;
-    }
-
-    this.lastRequestedSrc = src;
-
-    // Каждый новый запрос делает предыдущий устаревшим.
-    const requestId = ++this.requestId;
+    // Отменяем предыдущий запрос и делаем его результат устаревшим.
+    // Это также выполняется, когда src удаляют во время загрузки.
+    this.requestId += 1;
+    const requestId = this.requestId;
 
     this.abortController?.abort();
     this.abortController = null;
 
-    this.resetContent();
-
-    if (!src || !src.trim()) {
+    // Проверка выполняется до любого вызова fetch().
+    // Отсутствующий или пустой src не должен вызывать сетевой запрос.
+    if (src === null || src.trim() === '') {
+      this.lastRequestedSrc = src;
+      this.resetContent();
       this.linkElement.removeAttribute('href');
       this.linkElement.textContent = 'Источник не указан';
       this.setStatus('error', 'Ошибка: атрибут src отсутствует.');
       return;
     }
 
+    // Не загружаем повторно тот же URL, если запрос уже обработан
+    // и для него нет активного запроса.
+    if (
+      this.lastRequestedSrc === src &&
+      this.dataset.status !== 'loading'
+    ) {
+      return;
+    }
+
+    this.lastRequestedSrc = src;
+    this.resetContent();
+
     let url;
 
     try {
-      // Относительный URL разрешается относительно страницы с компонентом.
       url = new URL(src, document.baseURI);
-      this.linkElement.href = url.href;
-      this.linkElement.textContent = url.href;
     } catch {
       this.linkElement.removeAttribute('href');
       this.linkElement.textContent = src;
       this.setStatus('error', 'Ошибка: некорректный URL.');
       return;
     }
+
+    this.linkElement.href = url.href;
+    this.linkElement.textContent = url.href;
 
     const controller = new AbortController();
     this.abortController = controller;
@@ -218,7 +217,7 @@ class PagePreview extends HTMLElement {
 
       const html = await response.text();
 
-      // Проверяем, что элемент всё ещё подключён и запрос актуален.
+      // Не обновляем отключённый элемент или результат старого запроса.
       if (
         !this.isConnected ||
         requestId !== this.requestId ||
@@ -233,21 +232,20 @@ class PagePreview extends HTMLElement {
       const title = pageDocument.title.trim();
       const firstHeading = pageDocument.querySelector('h1');
       const heading = firstHeading
-        ? firstHeading.textContent.trim()
-        : '';
+      ? firstHeading.textContent.trim()
+      : '';
 
       this.titleElement.textContent =
-        title || 'Название отсутствует';
+      title || 'Название отсутствует';
 
       this.headingElement.textContent =
-        heading || 'Заголовок отсутствует';
+      heading || 'Заголовок отсутствует';
 
-      // В видимом тексте ссылки используем название или URL.
       this.linkElement.textContent = title || url.href;
 
       this.setStatus('ready', 'Страница успешно загружена.');
     } catch (error) {
-      // Отмена старого запроса не должна менять состояние нового.
+      // Отмена старого запроса не должна менять состояние элемента.
       if (
         !this.isConnected ||
         requestId !== this.requestId ||
